@@ -97,9 +97,6 @@
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, query, where, getDocs, runTransaction, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ========================================================================
-        // PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE
-        // ========================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDfIOISySTanrFXIiOGHG80-WBZQ3XRMGI",
             authDomain: "erp-pintureria.firebaseapp.com",
@@ -119,7 +116,6 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // --- Variables Globales y DOM ---
         const loader = document.getElementById('loader');
         const authView = document.getElementById('auth-view');
         const appContainer = document.getElementById('app-container');
@@ -135,19 +131,20 @@
             setTimeout(() => { toast.className = 'toast'; }, duration);
         }
 
-        // --- Lógica de Autenticación ---
         loginForm.addEventListener('submit', async (e) => { e.preventDefault(); try { await signInWithEmailAndPassword(auth, email.value, password.value); } catch (error) { showToast(error.message, 'error'); } });
         document.getElementById('register-btn').addEventListener('click', async () => { try { await createUserWithEmailAndPassword(auth, email.value, password.value); showToast('Usuario registrado. Ahora inicia sesión.', 'success'); } catch (error) { showToast(error.message, 'error'); } });
         document.getElementById('logout-btn').addEventListener('click', () => { if (productsUnsubscribe) productsUnsubscribe(); if (formulasUnsubscribe) formulasUnsubscribe(); signOut(auth); });
 
-        // --- PUNTO DE ENTRADA ---
         onAuthStateChanged(auth, (user) => {
             loader.style.display = 'none';
             if (user) {
                 currentUserId = user.uid;
                 authView.classList.add('hidden');
                 document.getElementById('user-email-display').textContent = user.email;
-                initializeAppModules();
+                if (!appContainer.classList.contains('initialized')) {
+                    initializeAppModules();
+                    appContainer.classList.add('initialized');
+                }
                 appContainer.classList.remove('hidden');
             } else {
                 authView.classList.remove('hidden');
@@ -155,7 +152,6 @@
             }
         });
         
-        // --- LÓGICA DE LA APLICACIÓN ---
         function initializeAppModules() {
             injectHTML();
             initNavigation();
@@ -172,19 +168,15 @@
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     const viewId = link.dataset.view;
-                    
                     mainViews.forEach(view => view.classList.remove('active'));
                     const viewToShow = document.getElementById(`${viewId}-view`);
                     if(viewToShow) viewToShow.classList.add('active');
-
                     navLinks.forEach(l => l.classList.remove('active'));
                     e.currentTarget.classList.add('active');
                     lucide.createIcons();
                 });
             });
         }
-        
-        // Inyección de HTML y Lógica de Módulos (completos)
         
         function injectHTML() {
             document.getElementById('pos-view').innerHTML = `<h1 class="text-3xl font-bold text-gray-800 mb-6">Punto de Venta</h1><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg:col-span-2 bg-white rounded-lg shadow p-4"><div class="relative mb-4"><div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i data-lucide="search" class="text-gray-400"></i></div><input type="text" id="pos-product-search" placeholder="Buscar producto por nombre o SKU..." class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"><div id="pos-search-results" class="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg hidden max-h-60 overflow-y-auto"></div></div><div id="pos-cart-items" class="overflow-y-auto" style="min-height: 300px;"></div><div id="pos-empty-cart" class="text-center py-16 text-gray-400"><i data-lucide="shopping-cart" class="mx-auto w-16 h-16"></i><p class="mt-4">El carrito está vacío</p></div></div><div class="bg-white rounded-lg shadow p-6 flex flex-col"><h2 class="text-2xl font-bold mb-4">Total a Pagar</h2><div class="bg-gray-800 text-white text-center py-4 rounded-lg mb-6"><p id="pos-total-display" class="text-4xl font-extrabold">$0.00</p></div><h3 class="text-lg font-semibold mb-3">Método de Pago</h3><div id="pos-payment-methods" class="grid grid-cols-2 gap-4"><button data-method="Efectivo" class="payment-method-btn flex items-center justify-center p-3 bg-gray-100 rounded-lg hover:bg-indigo-100 border-2 border-transparent"><i data-lucide="dollar-sign" class="w-5 h-5 mr-2"></i>Efectivo</button><button data-method="Tarjeta" class="payment-method-btn flex items-center justify-center p-3 bg-gray-100 rounded-lg hover:bg-indigo-100 border-2 border-transparent"><i data-lucide="credit-card" class="w-5 h-5 mr-2"></i>Tarjeta</button></div><button id="pos-finalize-sale" class="w-full mt-auto bg-indigo-600 text-white font-bold py-4 rounded-lg text-lg hover:bg-indigo-700 disabled:bg-gray-400" disabled>FINALIZAR VENTA</button></div></div>`;
@@ -195,13 +187,105 @@
             document.getElementById('formulaModal').innerHTML = `<div class="bg-white rounded-xl shadow-2xl w-11/12 md:w-2/3 lg:w-1/2 modal-content"><form id="formulaForm" class="p-8"><div class="flex justify-between items-center mb-6"><h2 id="formulaModalTitle" class="text-2xl font-bold"></h2><button type="button" class="close-formula-modal-btn text-2xl font-bold">&times;</button></div><div class="grid grid-cols-2 gap-4"><input type="hidden" id="formulaId"><div><label>Código</label><input required type="text" id="form-code" class="w-full p-2 border rounded"></div><div><label>Nombre</label><input required type="text" id="form-name" class="w-full p-2 border rounded"></div></div><div class="mt-4"><label>Fórmula base (Litros)</label><input required type="number" id="form-base-qty" value="1" class="w-full p-2 border rounded"></div><hr class="my-4"><h3 class="text-lg font-semibold">Pigmentos</h3><div id="pigments-container" class="space-y-2 mt-2"></div><button type="button" id="addPigmentBtn" class="text-sm text-indigo-600 mt-2 hover:underline">Agregar Pigmento</button><div class="mt-6 flex justify-end space-x-4"><button type="button" class="close-formula-modal-btn px-4 py-2 bg-gray-200 rounded">Cancelar</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded">Guardar</button></div></form></div>`;
         }
 
-        // --- Lógica de cada módulo ---
-        function initInventoryModule() { /* ... */ }
+        function initInventoryModule() {
+            const addBtn = document.getElementById('inv-add-btn');
+            const searchInput = document.getElementById('inv-search-input');
+            const tableBody = document.getElementById('inv-table-body');
+            const modal = document.getElementById('productModal');
+            const form = document.getElementById('productForm');
+            const modalTitle = document.getElementById('productModalTitle');
+            const productIdInput = document.getElementById('productId');
+            let currentInventory = [];
+
+            const renderTable = (inventory) => {
+                tableBody.innerHTML = '';
+                inventory.forEach(p => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b hover:bg-gray-50';
+                    row.innerHTML = `<td class="p-4">${p.sku}</td><td class="p-4">${p.name}</td><td class="p-4">${p.category}</td><td class="p-4">${p.stock}</td><td class="p-4">$${p.price.toFixed(2)}</td><td class="p-4 text-center space-x-2"><button class="edit-product p-1 text-blue-600 hover:text-blue-800" data-id="${p.id}"><i class="pointer-events-none" data-lucide="edit"></i></button><button class="delete-product p-1 text-red-600 hover:text-red-800" data-id="${p.id}"><i class="pointer-events-none" data-lucide="trash"></i></button></td>`;
+                    tableBody.appendChild(row);
+                });
+                lucide.createIcons();
+            };
+
+            if(productsUnsubscribe) productsUnsubscribe();
+            productsUnsubscribe = onSnapshot(collection(db, `users/${currentUserId}/products`), (snapshot) => {
+                currentInventory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                allProducts = [...currentInventory]; // Actualiza el caché global
+                renderTable(currentInventory);
+            });
+
+            searchInput.addEventListener('input', () => {
+                const term = searchInput.value.toLowerCase();
+                const filtered = currentInventory.filter(p => p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term));
+                renderTable(filtered);
+            });
+
+            addBtn.addEventListener('click', () => {
+                form.reset();
+                productIdInput.value = '';
+                modalTitle.textContent = 'Agregar Producto';
+                modal.style.display = 'flex';
+            });
+
+            modal.addEventListener('click', e => {
+                if (e.target.classList.contains('close-product-modal-btn')) {
+                    modal.style.display = 'none';
+                }
+            });
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const productId = productIdInput.value;
+                const productData = {
+                    sku: document.getElementById('sku').value,
+                    name: document.getElementById('name').value,
+                    brand: document.getElementById('brand').value,
+                    category: document.getElementById('category').value,
+                    stock: Number(document.getElementById('stock').value),
+                    price: Number(document.getElementById('price').value)
+                };
+                try {
+                    const docRef = productId ? doc(db, `users/${currentUserId}/products`, productId) : doc(collection(db, `users/${currentUserId}/products`));
+                    await setDoc(docRef, productData, { merge: true });
+                    modal.style.display = 'none';
+                    showToast('Producto guardado', 'success');
+                } catch (error) { showToast(error.message, 'error'); }
+            });
+
+            tableBody.addEventListener('click', async e => {
+                const target = e.target.closest('button');
+                if (!target) return;
+                const id = target.dataset.id;
+                if (target.classList.contains('delete-product')) {
+                    if (confirm('¿Seguro que quieres eliminar este producto?')) {
+                        try {
+                            await deleteDoc(doc(db, `users/${currentUserId}/products`, id));
+                            showToast('Producto eliminado', 'success');
+                        } catch(error) { showToast(error.message, 'error'); }
+                    }
+                } else if (target.classList.contains('edit-product')) {
+                    const product = allProducts.find(p => p.id === id);
+                    if (product) {
+                        form.reset();
+                        productIdInput.value = product.id;
+                        modalTitle.textContent = 'Editar Producto';
+                        document.getElementById('sku').value = product.sku;
+                        document.getElementById('name').value = product.name;
+                        document.getElementById('brand').value = product.brand;
+                        document.getElementById('category').value = product.category;
+                        document.getElementById('stock').value = product.stock;
+                        document.getElementById('price').value = product.price;
+                        modal.style.display = 'flex';
+                    }
+                }
+            });
+        }
+        
+        // El resto de la lógica para los otros módulos iría aquí de forma similar...
         function initPosModule() { /* ... */ }
         function initFormulasModule() { /* ... */ }
         function initPrepareColorModule() { /* ... */ }
-        
-        // El resto del código de los módulos va aquí...
 
     </script>
 </body>
